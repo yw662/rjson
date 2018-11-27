@@ -1,0 +1,14 @@
+[package]
+name = "rjson"
+version = "0.1.0"
+authors = ["yw662 <yw662@njit.edu>"]
+edition = "2018"
+
+[lib]
+name = "rjson"
+path = "src/lib.rs"
+
+[profile.release]
+lto = true
+
+[dependencies]
