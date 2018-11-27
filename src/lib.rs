@@ -1,15 +1,18 @@
 #![feature(core_intrinsics)]
 use core::option::Option;
 use core::convert::From;
+use core::any::Any;
 
 pub trait Array<'a, T: Value<'a>>: 'a {
     fn push(&mut self, v: T);
     fn new<'b>() -> &'b mut Self where Self: Sized;
+    fn as_any(&self) -> &dyn Any;
 }
 
 pub trait Object<'a, T: Value<'a>>: 'a {
     fn insert(&mut self, k: String, v: T);
     fn new<'b>() -> &'b mut Self where Self: Sized;
+    fn as_any(&self) -> &dyn Any;
 }
 
 pub trait Null<'a, T: Value<'a>>: 'a {
