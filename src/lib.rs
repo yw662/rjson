@@ -218,8 +218,7 @@ fn parse_string_unicode(src: &[char], index: &mut usize) -> Option<char> {
     }
     *index += 4; // because there is another `*index += 1` in `parse_string`
     use core::char;
-    let c = unsafe { Some(char::from_u32_unchecked(v)) };
-    c
+    unsafe { Some(char::from_u32_unchecked(v)) }
 }
 
 fn parse_string(src: &[char], index: &mut usize) -> Option<String> {
