@@ -117,5 +117,6 @@ fn test() {
     assert!(interpreted.is_some());
     // That means the parser has reached and the data is there.
     // We should test whether the data is good or not, but it is...boring.
+    println!("{}", interpreted.unwrap()); // run with --nocapture to check result.
 }
 

@@ -6,6 +6,7 @@
 
 ## Reminder
 * We allow `,` after the last item/member of Array/Object.
+* We treat unescaped line breaks as normal char, and ignore escaped line breaks.
 * We do not support surrogate unicode char.
 * We use `f64` for all numbers, but you can use others. Remind: `f64` means `i52`.
 * We take `&[char]`, not `&[u8]`, and not `&str`.
