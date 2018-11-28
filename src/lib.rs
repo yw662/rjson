@@ -3,6 +3,9 @@ use core::option::Option;
 use core::convert::From;
 use core::any::Any;
 
+#[cfg(test)]
+mod test;
+
 pub trait Array<'a, T: Value<'a>>: 'a {
     fn push(&mut self, v: T);
     fn new<'b>() -> &'b mut Self where Self: Sized;
@@ -16,7 +19,7 @@ pub trait Object<'a, T: Value<'a>>: 'a {
 }
 
 pub trait Null<'a, T: Value<'a>>: 'a {
-    fn new<'b>() -> &'b mut Self where Self: Sized;
+    fn new<'b>() -> &'b Self where Self: Sized;
 }
 
 pub trait Value<'a>: 'a + From<String> + From<f64> + From<bool> + 
@@ -206,7 +209,7 @@ fn parse_string_unicode(src: &[char], index: &mut usize) -> Option<char> {
         return Option::None;
     }
     let mut v: u32 = 0;
-    for i in 1..4 {
+    for i in 1..5 {
         let d = src[*index + i].to_digit(16).unwrap_or(16);
         if d == 16 {
             return Option::None;
@@ -215,7 +218,8 @@ fn parse_string_unicode(src: &[char], index: &mut usize) -> Option<char> {
     }
     *index += 4; // because there is another `*index += 1` in `parse_string`
     use core::char;
-    unsafe { Some(char::from_u32_unchecked(v)) }
+    let c = unsafe { Some(char::from_u32_unchecked(v)) };
+    c
 }
 
 fn parse_string(src: &[char], index: &mut usize) -> Option<String> {
@@ -233,10 +237,10 @@ fn parse_string(src: &[char], index: &mut usize) -> Option<String> {
                 'n' => '\n',
                 'r' => '\r',
                 't' => '\t',
-                'u' => parse_string_unicode(src, index).unwrap_or('\0'),
+                'u' => parse_string_unicode(src, index).unwrap_or('\u{fffd}'),
                 _ => src[*index]
             };
-            if c == '\0' {
+            if c == '\u{fffd}' {
                 return Option::None;
             } else {
                 v.push(c);
