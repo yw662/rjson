@@ -1,9 +1,10 @@
+#![no_std]
+#![feature(alloc)]
 #![feature(core_intrinsics)]
+extern crate alloc;
+use alloc::string::String;
 use core::option::Option;
 use core::convert::From;
-
-#[cfg(test)]
-mod test;
 
 pub trait Array <T: Value<Self, O, N>, O: Object<T, Self, N>, N: Null<T, Self, O>> where Self: Sized{
     fn push(&mut self, v: T);

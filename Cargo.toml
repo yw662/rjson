@@ -1,6 +1,6 @@
 [package]
 name = "rjson"
-version = "0.2.1"
+version = "0.3.0"
 authors = ["yw662 <yw662@njit.edu>"]
 edition = "2018"
 description = "A minimal json parser"
@@ -11,6 +11,7 @@ license = "MIT"
 [lib]
 name = "rjson"
 path = "src/lib.rs"
+doctest = false
 
 [profile.release]
 lto = true

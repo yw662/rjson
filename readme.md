@@ -2,7 +2,8 @@
 * Contain a single standalone `lib.rs` that do all the jobs.
 * Impl the traits with your own structs before `parse`.
 * A simple Impl can be, `enum` for `Value`, the same `enum` for `Null`, `Vec` for `Array` and `BTreeMap` for `Object`.
-* It requires only `core`, nothing else, including `std`.
+* It requires only `core` and `alloc`, nothing else, including `std`.
+* In `no_std` environment, it need a global allocator to work.
 
 ## Reminder
 * We allow `,` after the last item/member of Array/Object.
