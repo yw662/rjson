@@ -1,37 +1,33 @@
 #![feature(core_intrinsics)]
 use core::option::Option;
 use core::convert::From;
-use core::any::Any;
 
 #[cfg(test)]
 mod test;
 
-pub trait Array<'a, T: Value<'a>>: 'a {
+pub trait Array <'a, T: Value<'a, Self, O, N>, O: Object<'a, T, Self, N>, N: Null<'a, T, Self, O>>: 'a where Self: Sized{
     fn push(&mut self, v: T);
-    fn new<'b>() -> &'b mut Self where Self: Sized;
-    fn as_any(&self) -> &dyn Any;
+    fn new() -> Self;
 }
 
-pub trait Object<'a, T: Value<'a>>: 'a {
+pub trait Object<'a, T: Value<'a, A, Self, N>, A: Array<'a, T, Self, N>, N: Null<'a, T, A, Self>>: 'a where Self: Sized{
     fn insert(&mut self, k: String, v: T);
-    fn new<'b>() -> &'b mut Self where Self: Sized;
-    fn as_any(&self) -> &dyn Any;
+    fn new() -> Self;
 }
 
-pub trait Null<'a, T: Value<'a>>: 'a {
-    fn new<'b>() -> &'b Self where Self: Sized;
+pub trait Null<'a, T: Value<'a, A, O, Self>, A: Array<'a, T, O, Self>, O: Object<'a, T, A, Self>>: 'a where Self: Sized{
+    fn new() -> Self;
 }
 
-pub trait Value<'a>: 'a + From<String> + From<f64> + From<bool> + 
-    From<&'a Array<'a, Self>> + 
-    From<&'a Object<'a, Self>> +
-    From<&'a Null<'a, Self>> {
+pub trait Value<'a, A: Array<'a, Self, O, N>, O: Object<'a, Self, A, N>, N: Null<'a, Self, A, O>>:
+'a + From<String> + From<f64> + From<bool> + From<A> + From<O> + From<N> {
 }
 
 fn is_space(c: char) -> bool {
     c.is_whitespace() || c == '\t' || c == '\n' || c == '\r'
 }
-pub fn parse<'a, T: Value<'a>, A: Array<'a, T>, O: Object<'a, T>, N: Null<'a, T>>(src: &[char], index: &mut usize) -> Option<T> {
+pub fn parse<'a, T: Value<'a, A, O, N>, A: Array<'a, T, O, N>, O: Object<'a, T, A, N>, N: Null<'a, T, A, O>>
+(src: &[char], index: &mut usize) -> Option<T> {
     while src.len() > *index && is_space(src[*index]) {
         *index += 1;
     }
@@ -39,9 +35,9 @@ pub fn parse<'a, T: Value<'a>, A: Array<'a, T>, O: Object<'a, T>, N: Null<'a, T>
         return Option::None;
     }
     if src[*index] == '{' {
-        parse_object::<T, A, O, N>(src, index).map(|v| T::from(v as &Object<T>))
+        parse_object::<T, A, O, N>(src, index).map(|v| T::from(v))
     } else if src[*index] == '[' {
-        parse_array::<T, A, O, N>(src, index).map(|v| T::from(v as &Array<T>))
+        parse_array::<T, A, O, N>(src, index).map(|v| T::from(v))
     } else if src[*index] == 't' {
         parse_true(src, index).map(|v| T::from(v))
     } else if src[*index] == 'f' {
@@ -49,7 +45,7 @@ pub fn parse<'a, T: Value<'a>, A: Array<'a, T>, O: Object<'a, T>, N: Null<'a, T>
     } else if src[*index] == '"' {
         parse_string(src, index).map(|v| T::from(v))
     } else if src[*index] == 'n' {
-        parse_null::<T, N>(src, index).map(|v| T::from(v as &Null<T>))
+        parse_null::<T, A, O, N>(src, index).map(|v| T::from(v))
     } else if src[*index] == '-' || src[*index].is_ascii_digit() {
         parse_number(src, index).map(|v| T::from(v))
     } else {
@@ -57,12 +53,13 @@ pub fn parse<'a, T: Value<'a>, A: Array<'a, T>, O: Object<'a, T>, N: Null<'a, T>
     }
 }
 
-pub fn parse_object<'a, T: Value<'a>, A: Array<'a, T>, O: Object<'a, T>, N: Null<'a, T>>(src: &[char], index: &mut usize) -> Option<&'a O> {
+pub fn parse_object<'a, T: Value<'a, A, O, N>, A: Array<'a, T, O, N>, O: Object<'a, T, A, N>, N: Null<'a, T, A, O>>
+(src: &[char], index: &mut usize) -> Option<O> {
     if src.len() <= *index + 1 || src[*index] != '{' {
         return Option::None;
     }
     *index += 1;
-    let v = &mut *O::new();
+    let mut v = O::new();
     while src.len() > *index {
         while src.len() > *index && is_space(src[*index]) {
             *index += 1;
@@ -117,12 +114,13 @@ pub fn parse_object<'a, T: Value<'a>, A: Array<'a, T>, O: Object<'a, T>, N: Null
     Option::None
 }
 
-pub fn parse_array<'a, T: Value<'a>, A: Array<'a, T>, O: Object<'a, T>, N: Null<'a, T>>(src: &[char], index: &mut usize) -> Option<&'a A> {
+pub fn parse_array<'a, T: Value<'a, A, O, N>, A: Array<'a, T, O, N>, O: Object<'a, T, A, N>, N: Null<'a, T, A, O>>
+(src: &[char], index: &mut usize) -> Option<A> {
     if src.len() <= *index + 1 || src[*index] != '[' {
         return Option::None;
     }
     *index += 1;
-    let v = &mut *A::new();
+    let mut v = A::new();
     while src.len() > *index {
         while src.len() > *index && is_space(src[*index]) {
             *index += 1;
@@ -188,7 +186,8 @@ fn parse_false(src: &[char], index: &mut usize) -> Option<bool> {
     Option::None
 }
 
-fn parse_null<'a, T: Value<'a>, N: Null<'a, T>>(src: &[char], index: &mut usize) -> Option<&'a N> {
+fn parse_null<'a, T: Value<'a, A, O, N>, A: Array<'a, T, O, N>, O: Object<'a, T, A, N>, N: Null<'a, T, A, O>>
+(src: &[char], index: &mut usize) -> Option<N> {
     let mut test_null = "null".chars();
     while src.len() > *index {
         let c = test_null.next();

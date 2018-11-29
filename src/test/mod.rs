@@ -1,8 +1,6 @@
 use std::vec::Vec;
 use std::collections::BTreeMap;
 use std::convert::From;
-use std::any::Any;
-use std::boxed::Box;
 use crate::Value;
 use crate::Array;
 use crate::Object;
@@ -22,38 +20,30 @@ enum JsonValue {
 struct JsonArray(Vec<JsonValue>);
 struct JsonObject(BTreeMap<String, JsonValue>);
 
-impl<'a> Array<'a, JsonValue> for JsonArray {
-    fn new<'b>() -> &'b mut Self {
-        // FIXME: seems that `new` should not return a ref.
-        Box::leak::<'b>(Box::new(JsonArray(Vec::new())))
+impl<'a> Array<'a, JsonValue, JsonObject, JsonValue> for JsonArray {
+    fn new() -> Self {
+        JsonArray(Vec::new())
     }
     fn push(&mut self, v: JsonValue) {
         self.0.push(v)
     }
-    fn as_any(&self) -> &dyn Any {
-        &self.0
-    }
 }
 
-impl<'a> Object<'a, JsonValue> for JsonObject {
-    fn new<'b>() -> &'b mut Self {
-        // FIXME: again
-        Box::leak::<'b>(Box::new(JsonObject(BTreeMap::new())))
+impl<'a> Object<'a, JsonValue, JsonArray, JsonValue> for JsonObject {
+    fn new<'b>() -> Self {
+        JsonObject(BTreeMap::new())
     }
     fn insert(&mut self, k: String, v: JsonValue) {
         self.0.insert(k, v);
     }
-    fn as_any(&self) -> &dyn Any {
-        &self.0
-    }
 }
 
-impl<'a> Null<'a, JsonValue> for JsonValue {
-    fn new<'b>() -> &'b Self {
-        &JsonValue::Null
+impl<'a> Null<'a, JsonValue, JsonArray, JsonObject> for JsonValue {
+    fn new() -> Self {
+        JsonValue::Null
     }
 }
-impl<'a> Value<'a> for JsonValue {}
+impl<'a> Value<'a, JsonArray, JsonObject, JsonValue> for JsonValue {}
 
 impl From<f64> for JsonValue {
     fn from(v: f64) -> Self {
@@ -70,21 +60,14 @@ impl From<String> for JsonValue {
         JsonValue::String(v)
     }
 }
-impl<'a> From<&'a Array<'a, JsonValue>> for JsonValue {
-    fn from(v: & Array<JsonValue>) -> Self {
-        let r = v.as_any().downcast_ref::<Vec<JsonValue>>().unwrap();
-        JsonValue::Array(r.clone())
+impl<'a> From<JsonArray> for JsonValue {
+    fn from(v: JsonArray) -> Self {
+        JsonValue::Array(v.0)
     }
 }
-impl<'a> From<&'a Object<'a, JsonValue>> for JsonValue {
-    fn from(v: & Object<JsonValue>) -> Self {
-        let r = v.as_any().downcast_ref::<BTreeMap<String, JsonValue>>().unwrap();
-        JsonValue::Object(r.clone())
-    }
-}
-impl<'a> From<&'a Null<'a, JsonValue>> for JsonValue {
-    fn from(_v: & Null<JsonValue>) -> Self {
-        JsonValue::Null
+impl<'a> From<JsonObject> for JsonValue {
+    fn from(v: JsonObject) -> Self {
+        JsonValue::Object(v.0)
     }
 }
 
