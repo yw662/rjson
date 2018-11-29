@@ -7,7 +7,6 @@ use crate::Object;
 use crate::Null;
 use crate::parse;
 
-#[derive(Clone)]
 enum JsonValue {
     Null,
     Number(f64),
