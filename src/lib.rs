@@ -53,7 +53,7 @@ pub fn parse<T: Value<A, O, N>, A: Array<T, O, N>, O: Object<T, A, N>, N: Null<T
     }
 }
 
-pub fn parse_object<T: Value<A, O, N>, A: Array<T, O, N>, O: Object<T, A, N>, N: Null<T, A, O>>
+fn parse_object<T: Value<A, O, N>, A: Array<T, O, N>, O: Object<T, A, N>, N: Null<T, A, O>>
 (src: &[char], index: &mut usize) -> Option<O> {
     if src.len() <= *index + 1 || src[*index] != '{' {
         return Option::None;
@@ -114,7 +114,7 @@ pub fn parse_object<T: Value<A, O, N>, A: Array<T, O, N>, O: Object<T, A, N>, N:
     Option::None
 }
 
-pub fn parse_array<T: Value<A, O, N>, A: Array<T, O, N>, O: Object<T, A, N>, N: Null<T, A, O>>
+fn parse_array<T: Value<A, O, N>, A: Array<T, O, N>, O: Object<T, A, N>, N: Null<T, A, O>>
 (src: &[char], index: &mut usize) -> Option<A> {
     if src.len() <= *index + 1 || src[*index] != '[' {
         return Option::None;
