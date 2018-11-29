@@ -19,7 +19,7 @@ enum JsonValue {
 struct JsonArray(Vec<JsonValue>);
 struct JsonObject(BTreeMap<String, JsonValue>);
 
-impl<'a> Array<'a, JsonValue, JsonObject, JsonValue> for JsonArray {
+impl Array<JsonValue, JsonObject, JsonValue> for JsonArray {
     fn new() -> Self {
         JsonArray(Vec::new())
     }
@@ -28,7 +28,7 @@ impl<'a> Array<'a, JsonValue, JsonObject, JsonValue> for JsonArray {
     }
 }
 
-impl<'a> Object<'a, JsonValue, JsonArray, JsonValue> for JsonObject {
+impl Object<JsonValue, JsonArray, JsonValue> for JsonObject {
     fn new<'b>() -> Self {
         JsonObject(BTreeMap::new())
     }
@@ -37,12 +37,12 @@ impl<'a> Object<'a, JsonValue, JsonArray, JsonValue> for JsonObject {
     }
 }
 
-impl<'a> Null<'a, JsonValue, JsonArray, JsonObject> for JsonValue {
+impl Null<JsonValue, JsonArray, JsonObject> for JsonValue {
     fn new() -> Self {
         JsonValue::Null
     }
 }
-impl<'a> Value<'a, JsonArray, JsonObject, JsonValue> for JsonValue {}
+impl Value<JsonArray, JsonObject, JsonValue> for JsonValue {}
 
 impl From<f64> for JsonValue {
     fn from(v: f64) -> Self {
@@ -59,12 +59,12 @@ impl From<String> for JsonValue {
         JsonValue::String(v)
     }
 }
-impl<'a> From<JsonArray> for JsonValue {
+impl From<JsonArray> for JsonValue {
     fn from(v: JsonArray) -> Self {
         JsonValue::Array(v.0)
     }
 }
-impl<'a> From<JsonObject> for JsonValue {
+impl From<JsonObject> for JsonValue {
     fn from(v: JsonObject) -> Self {
         JsonValue::Object(v.0)
     }

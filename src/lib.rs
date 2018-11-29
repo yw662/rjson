@@ -5,28 +5,28 @@ use core::convert::From;
 #[cfg(test)]
 mod test;
 
-pub trait Array <'a, T: Value<'a, Self, O, N>, O: Object<'a, T, Self, N>, N: Null<'a, T, Self, O>>: 'a where Self: Sized{
+pub trait Array <T: Value<Self, O, N>, O: Object<T, Self, N>, N: Null<T, Self, O>> where Self: Sized{
     fn push(&mut self, v: T);
     fn new() -> Self;
 }
 
-pub trait Object<'a, T: Value<'a, A, Self, N>, A: Array<'a, T, Self, N>, N: Null<'a, T, A, Self>>: 'a where Self: Sized{
+pub trait Object<T: Value<A, Self, N>, A: Array<T, Self, N>, N: Null<T, A, Self>> where Self: Sized{
     fn insert(&mut self, k: String, v: T);
     fn new() -> Self;
 }
 
-pub trait Null<'a, T: Value<'a, A, O, Self>, A: Array<'a, T, O, Self>, O: Object<'a, T, A, Self>>: 'a where Self: Sized{
+pub trait Null<T: Value<A, O, Self>, A: Array<T, O, Self>, O: Object<T, A, Self>> where Self: Sized{
     fn new() -> Self;
 }
 
-pub trait Value<'a, A: Array<'a, Self, O, N>, O: Object<'a, Self, A, N>, N: Null<'a, Self, A, O>>:
-'a + From<String> + From<f64> + From<bool> + From<A> + From<O> + From<N> {
+pub trait Value<A: Array<Self, O, N>, O: Object<Self, A, N>, N: Null<Self, A, O>>:
+From<String> + From<f64> + From<bool> + From<A> + From<O> + From<N> {
 }
 
 fn is_space(c: char) -> bool {
     c.is_whitespace() || c == '\t' || c == '\n' || c == '\r'
 }
-pub fn parse<'a, T: Value<'a, A, O, N>, A: Array<'a, T, O, N>, O: Object<'a, T, A, N>, N: Null<'a, T, A, O>>
+pub fn parse<T: Value<A, O, N>, A: Array<T, O, N>, O: Object<T, A, N>, N: Null<T, A, O>>
 (src: &[char], index: &mut usize) -> Option<T> {
     while src.len() > *index && is_space(src[*index]) {
         *index += 1;
@@ -53,7 +53,7 @@ pub fn parse<'a, T: Value<'a, A, O, N>, A: Array<'a, T, O, N>, O: Object<'a, T, 
     }
 }
 
-pub fn parse_object<'a, T: Value<'a, A, O, N>, A: Array<'a, T, O, N>, O: Object<'a, T, A, N>, N: Null<'a, T, A, O>>
+pub fn parse_object<T: Value<A, O, N>, A: Array<T, O, N>, O: Object<T, A, N>, N: Null<T, A, O>>
 (src: &[char], index: &mut usize) -> Option<O> {
     if src.len() <= *index + 1 || src[*index] != '{' {
         return Option::None;
@@ -114,7 +114,7 @@ pub fn parse_object<'a, T: Value<'a, A, O, N>, A: Array<'a, T, O, N>, O: Object<
     Option::None
 }
 
-pub fn parse_array<'a, T: Value<'a, A, O, N>, A: Array<'a, T, O, N>, O: Object<'a, T, A, N>, N: Null<'a, T, A, O>>
+pub fn parse_array<T: Value<A, O, N>, A: Array<T, O, N>, O: Object<T, A, N>, N: Null<T, A, O>>
 (src: &[char], index: &mut usize) -> Option<A> {
     if src.len() <= *index + 1 || src[*index] != '[' {
         return Option::None;
@@ -186,7 +186,7 @@ fn parse_false(src: &[char], index: &mut usize) -> Option<bool> {
     Option::None
 }
 
-fn parse_null<'a, T: Value<'a, A, O, N>, A: Array<'a, T, O, N>, O: Object<'a, T, A, N>, N: Null<'a, T, A, O>>
+fn parse_null<T: Value<A, O, N>, A: Array<T, O, N>, O: Object<T, A, N>, N: Null<T, A, O>>
 (src: &[char], index: &mut usize) -> Option<N> {
     let mut test_null = "null".chars();
     while src.len() > *index {
