@@ -241,12 +241,8 @@ fn parse_string(src: &[char], index: &mut usize) -> Option<String> {
                 'u' => parse_string_unicode(src, index).unwrap_or('\u{fffd}'),
                 _ => src[*index]
             };
-            if c == '\u{fffd}' {
-                return Option::None;
-            } else {
-                if c!= '\0' {
-                    v.push(c);
-                }
+            if c!= '\0' {
+                v.push(c);
             }
             escaped = false;
         } else if src[*index] == '\\' {

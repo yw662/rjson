@@ -1,6 +1,6 @@
 [package]
 name = "rjson"
-version = "0.3.0"
+version = "0.3.1"
 authors = ["yw662 <yw662@njit.edu>"]
 edition = "2018"
 description = "A minimal json parser"
