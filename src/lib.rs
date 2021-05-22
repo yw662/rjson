@@ -1,34 +1,49 @@
-#![no_std]
-#![feature(alloc)]
-#![feature(core_intrinsics)]
+#![cfg_attr(not(feature = "std"), no_std)]
+#![cfg_attr(not(feature = "std"), feature(core_intrinsics))]
+#[cfg(not(feature = "std"))]
 extern crate alloc;
+#[cfg(not(feature = "std"))]
 use alloc::string::String;
-use core::option::Option;
 use core::convert::From;
+use core::option::Option;
+#[cfg(feature = "std")]
+use std::string::String;
 
-pub trait Array <T: Value<Self, O, N>, O: Object<T, Self, N>, N: Null<T, Self, O>> where Self: Sized{
+pub trait Array<T: Value<Self, O, N>, O: Object<T, Self, N>, N: Null<T, Self, O>>
+where
+    Self: Sized,
+{
     fn push(&mut self, v: T);
     fn new() -> Self;
 }
 
-pub trait Object<T: Value<A, Self, N>, A: Array<T, Self, N>, N: Null<T, A, Self>> where Self: Sized{
+pub trait Object<T: Value<A, Self, N>, A: Array<T, Self, N>, N: Null<T, A, Self>>
+where
+    Self: Sized,
+{
     fn insert(&mut self, k: String, v: T);
     fn new() -> Self;
 }
 
-pub trait Null<T: Value<A, O, Self>, A: Array<T, O, Self>, O: Object<T, A, Self>> where Self: Sized{
+pub trait Null<T: Value<A, O, Self>, A: Array<T, O, Self>, O: Object<T, A, Self>>
+where
+    Self: Sized,
+{
     fn new() -> Self;
 }
 
 pub trait Value<A: Array<Self, O, N>, O: Object<Self, A, N>, N: Null<Self, A, O>>:
-From<String> + From<f64> + From<bool> + From<A> + From<O> + From<N> {
+    From<String> + From<f64> + From<bool> + From<A> + From<O> + From<N>
+{
 }
 
 fn is_space(c: char) -> bool {
     c.is_whitespace() || c == '\t' || c == '\n' || c == '\r'
 }
-pub fn parse<T: Value<A, O, N>, A: Array<T, O, N>, O: Object<T, A, N>, N: Null<T, A, O>>
-(src: &[char], index: &mut usize) -> Option<T> {
+pub fn parse<T: Value<A, O, N>, A: Array<T, O, N>, O: Object<T, A, N>, N: Null<T, A, O>>(
+    src: &[char],
+    index: &mut usize,
+) -> Option<T> {
     while src.len() > *index && is_space(src[*index]) {
         *index += 1;
     }
@@ -54,8 +69,10 @@ pub fn parse<T: Value<A, O, N>, A: Array<T, O, N>, O: Object<T, A, N>, N: Null<T
     }
 }
 
-fn parse_object<T: Value<A, O, N>, A: Array<T, O, N>, O: Object<T, A, N>, N: Null<T, A, O>>
-(src: &[char], index: &mut usize) -> Option<O> {
+fn parse_object<T: Value<A, O, N>, A: Array<T, O, N>, O: Object<T, A, N>, N: Null<T, A, O>>(
+    src: &[char],
+    index: &mut usize,
+) -> Option<O> {
     if src.len() <= *index + 1 || src[*index] != '{' {
         return Option::None;
     }
@@ -115,8 +132,10 @@ fn parse_object<T: Value<A, O, N>, A: Array<T, O, N>, O: Object<T, A, N>, N: Nul
     Option::None
 }
 
-fn parse_array<T: Value<A, O, N>, A: Array<T, O, N>, O: Object<T, A, N>, N: Null<T, A, O>>
-(src: &[char], index: &mut usize) -> Option<A> {
+fn parse_array<T: Value<A, O, N>, A: Array<T, O, N>, O: Object<T, A, N>, N: Null<T, A, O>>(
+    src: &[char],
+    index: &mut usize,
+) -> Option<A> {
     if src.len() <= *index + 1 || src[*index] != '[' {
         return Option::None;
     }
@@ -187,8 +206,10 @@ fn parse_false(src: &[char], index: &mut usize) -> Option<bool> {
     Option::None
 }
 
-fn parse_null<T: Value<A, O, N>, A: Array<T, O, N>, O: Object<T, A, N>, N: Null<T, A, O>>
-(src: &[char], index: &mut usize) -> Option<N> {
+fn parse_null<T: Value<A, O, N>, A: Array<T, O, N>, O: Object<T, A, N>, N: Null<T, A, O>>(
+    src: &[char],
+    index: &mut usize,
+) -> Option<N> {
     let mut test_null = "null".chars();
     while src.len() > *index {
         let c = test_null.next();
@@ -222,7 +243,7 @@ fn parse_string_unicode(src: &[char], index: &mut usize) -> Option<char> {
 }
 
 fn parse_string(src: &[char], index: &mut usize) -> Option<String> {
-    if src.len() <= *index + 1 || src[*index] != '"'  {
+    if src.len() <= *index + 1 || src[*index] != '"' {
         return Option::None;
     }
     *index += 1;
@@ -239,9 +260,9 @@ fn parse_string(src: &[char], index: &mut usize) -> Option<String> {
                 '\n' => '\0',
                 '\r' => '\0',
                 'u' => parse_string_unicode(src, index).unwrap_or('\u{fffd}'),
-                _ => src[*index]
+                _ => src[*index],
             };
-            if c!= '\0' {
+            if c != '\0' {
                 v.push(c);
             }
             escaped = false;
@@ -255,7 +276,7 @@ fn parse_string(src: &[char], index: &mut usize) -> Option<String> {
         }
         *index += 1;
     }
-    Option::None 
+    Option::None
 }
 
 fn parse_number_integer(src: &[char], index: &mut usize) -> f64 {
@@ -270,7 +291,14 @@ fn parse_number_integer(src: &[char], index: &mut usize) -> f64 {
 fn parse_number_decimal(src: &[char], index: &mut usize) -> f64 {
     let head = *index;
     let v = parse_number_integer(src, index);
-    v * unsafe { core::intrinsics::powif64(0.1, (*index - head) as i32) }
+    #[cfg(not(feature = "std"))]
+    {
+        v * unsafe { core::intrinsics::powif64(0.1, (*index - head) as i32) }
+    }
+    #[cfg(feature = "std")]
+    {
+        v * f64::powi(0.1, (*index - head) as i32)
+    }
 }
 
 fn parse_number(src: &[char], index: &mut usize) -> Option<f64> {
@@ -315,7 +343,15 @@ fn parse_number(src: &[char], index: &mut usize) -> Option<f64> {
             }
         }
         let e = parse_number_integer(src, index);
-        v *= unsafe { core::intrinsics::powif64(10.0, e as i32 * e_sign) };
+
+        #[cfg(not(feature = "std"))]
+        {
+            v *= unsafe { core::intrinsics::powif64(10.0, e as i32 * e_sign) };
+        }
+        #[cfg(feature = "std")]
+        {
+            v *= f64::powi(10.0, e as i32 * e_sign)
+        }
     }
     Some(v * sign as f64)
 }
