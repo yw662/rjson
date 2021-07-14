@@ -44,6 +44,22 @@ pub trait Value<A: Array<Self, O, N>, O: Object<Self, A, N>, N: Null<Self, A, O>
 {
 }
 
+pub enum Number {
+    U64(u64),
+    I64(i64),
+    F64(f64),
+}
+
+// impl From<Number> for Value {
+//     fn from(v: Number) -> Self {
+//         match v {
+//             Number::I64(n) => i64::from(n),
+//             Number::U64(n) => u64::from(n),
+//             Number::F64(n) => f64::from(n),
+//         }
+//     }
+// }
+
 fn is_space(c: char) -> bool {
     c.is_whitespace() || c == '\t' || c == '\n' || c == '\r'
 }
@@ -70,7 +86,17 @@ pub fn parse<T: Value<A, O, N>, A: Array<T, O, N>, O: Object<T, A, N>, N: Null<T
     } else if src[*index] == 'n' {
         parse_null::<T, A, O, N>(src, index).map(|v| T::from(v))
     } else if src[*index] == '-' || src[*index].is_ascii_digit() {
-        parse_number::<T>(src, index).map(|v| T::from(v))
+        parse_number(src, index).map(|v| match v {
+            #[cfg(feature = "integer")]
+            Number::I64(n) => T::from(n),
+            #[cfg(not(feature = "integer"))]
+            Number::I64(n) => T::from(n as f64),
+            #[cfg(feature = "integer")]
+            Number::U64(n) => T::from(n),
+            #[cfg(not(feature = "integer"))]
+            Number::U64(n) => T::from(n as f64),
+            Number::F64(n) => T::from(n),
+        })
     } else {
         Option::None
     }
@@ -286,10 +312,10 @@ fn parse_string(src: &[char], index: &mut usize) -> Option<String> {
     Option::None
 }
 
-fn parse_number_integer(src: &[char], index: &mut usize) -> f64 {
-    let mut v: f64 = 0 as f64;
+fn parse_number_integer(src: &[char], index: &mut usize) -> u64 {
+    let mut v: u64 = 0;
     while src.len() > *index && src[*index].is_ascii_digit() {
-        v = v * 10.0 + src[*index].to_digit(10).unwrap() as f64;
+        v = v * 10 + src[*index].to_digit(10).unwrap() as u64;
         *index += 1;
     }
     v
@@ -297,7 +323,7 @@ fn parse_number_integer(src: &[char], index: &mut usize) -> f64 {
 
 fn parse_number_decimal(src: &[char], index: &mut usize) -> f64 {
     let head = *index;
-    let v = parse_number_integer(src, index);
+    let v = parse_number_integer(src, index) as f64;
     #[cfg(not(feature = "std"))]
     {
         v * unsafe { core::intrinsics::powif64(0.1, (*index - head) as i32) }
@@ -308,11 +334,8 @@ fn parse_number_decimal(src: &[char], index: &mut usize) -> f64 {
     }
 }
 
-fn parse_number<T: From<f64> + From<i64> + From<u64>>(
-    src: &[char],
-    index: &mut usize,
-) -> Option<f64> {
-    let mut v: f64 = 0 as f64;
+fn parse_number(src: &[char], index: &mut usize) -> Option<Number> {
+    let mut v: u64 = 0;
     let mut sign = 1;
     if src.len() <= *index {
         return Option::None;
@@ -330,13 +353,22 @@ fn parse_number<T: From<f64> + From<i64> + From<u64>>(
         *index += 1;
     }
     if src.len() <= *index {
-        return Some(v * sign as f64);
+        return Some({
+            if sign > 0 {
+                Number::U64(v as u64)
+            } else {
+                Number::I64(sign * v as i64)
+            }
+        });
     }
+
+    // Floating point number part
+    let mut v = v as f64;
     if src[*index] == '.' {
         *index += 1;
         v += parse_number_decimal(src, index);
         if src.len() <= *index {
-            return Some(v * sign as f64);
+            return Some(Number::F64(v * sign as f64));
         }
     }
     if src[*index] == 'e' || src[*index] == 'E' {
@@ -363,5 +395,5 @@ fn parse_number<T: From<f64> + From<i64> + From<u64>>(
             v *= f64::powi(10.0, e as i32 * e_sign)
         }
     }
-    Some(v * sign as f64)
+    Some(Number::F64(v * sign as f64))
 }
