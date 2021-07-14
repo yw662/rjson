@@ -32,8 +32,15 @@ where
     fn new() -> Self;
 }
 
+#[cfg(not(feature = "integer"))]
 pub trait Value<A: Array<Self, O, N>, O: Object<Self, A, N>, N: Null<Self, A, O>>:
     From<String> + From<f64> + From<bool> + From<A> + From<O> + From<N>
+{
+}
+
+#[cfg(feature = "integer")]
+pub trait Value<A: Array<Self, O, N>, O: Object<Self, A, N>, N: Null<Self, A, O>>:
+    From<String> + From<f64> + From<i64> + From<u64> + From<bool> + From<A> + From<O> + From<N>
 {
 }
 
@@ -63,7 +70,7 @@ pub fn parse<T: Value<A, O, N>, A: Array<T, O, N>, O: Object<T, A, N>, N: Null<T
     } else if src[*index] == 'n' {
         parse_null::<T, A, O, N>(src, index).map(|v| T::from(v))
     } else if src[*index] == '-' || src[*index].is_ascii_digit() {
-        parse_number(src, index).map(|v| T::from(v))
+        parse_number::<T>(src, index).map(|v| T::from(v))
     } else {
         Option::None
     }
@@ -301,7 +308,10 @@ fn parse_number_decimal(src: &[char], index: &mut usize) -> f64 {
     }
 }
 
-fn parse_number(src: &[char], index: &mut usize) -> Option<f64> {
+fn parse_number<T: From<f64> + From<i64> + From<u64>>(
+    src: &[char],
+    index: &mut usize,
+) -> Option<f64> {
     let mut v: f64 = 0 as f64;
     let mut sign = 1;
     if src.len() <= *index {
