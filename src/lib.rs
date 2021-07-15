@@ -64,17 +64,17 @@ pub fn parse<T: Value<A, O, N>, A: Array<T, O, N>, O: Object<T, A, N>, N: Null<T
         return Option::None;
     }
     if src[*index] == '{' {
-        parse_object::<T, A, O, N>(src, index).map(|v| T::from(v))
+        parse_object::<T, A, O, N>(src, index).map(T::from)
     } else if src[*index] == '[' {
-        parse_array::<T, A, O, N>(src, index).map(|v| T::from(v))
+        parse_array::<T, A, O, N>(src, index).map(T::from)
     } else if src[*index] == 't' {
-        parse_true(src, index).map(|v| T::from(v))
+        parse_true(src, index).map(T::from)
     } else if src[*index] == 'f' {
-        parse_false(src, index).map(|v| T::from(v))
+        parse_false(src, index).map(T::from)
     } else if src[*index] == '"' {
-        parse_string(src, index).map(|v| T::from(v))
+        parse_string(src, index).map(T::from)
     } else if src[*index] == 'n' {
-        parse_null::<T, A, O, N>(src, index).map(|v| T::from(v))
+        parse_null::<T, A, O, N>(src, index).map(T::from)
     } else if src[*index] == '-' || src[*index].is_ascii_digit() {
         parse_number(src, index).map(|v| match v {
             #[cfg(feature = "integer")]
@@ -113,9 +113,6 @@ fn parse_object<T: Value<A, O, N>, A: Array<T, O, N>, O: Object<T, A, N>, N: Nul
             return Some(v);
         }
         let k = parse_string(src, index);
-        if k.is_none() {
-            return Option::None;
-        }
         while src.len() > *index && is_space(src[*index]) {
             *index += 1;
         }
@@ -133,10 +130,7 @@ fn parse_object<T: Value<A, O, N>, A: Array<T, O, N>, O: Object<T, A, N>, N: Nul
             return Option::None;
         }
         let c = parse::<T, A, O, N>(src, index);
-        if c.is_none() {
-            return Option::None;
-        }
-        v.insert(k.unwrap(), c.unwrap());
+        v.insert(k?, c?);
         while src.len() > *index && is_space(src[*index]) {
             *index += 1;
         }
@@ -176,10 +170,7 @@ fn parse_array<T: Value<A, O, N>, A: Array<T, O, N>, O: Object<T, A, N>, N: Null
             return Some(v);
         }
         let i = parse::<T, A, O, N>(src, index);
-        if i.is_none() {
-            return Option::None;
-        }
-        v.push(i.unwrap());
+        v.push(i?);
         while src.len() > *index && is_space(src[*index]) {
             *index += 1;
         }

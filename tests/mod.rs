@@ -240,7 +240,6 @@ fn test_u64() {
     let val = json_val.u64("number");
     assert!(val.is_none());
 
-
     let json_val = parse_json(r#"{"number": "123"}"#).unwrap();
     let val = json_val.u64("number");
     assert!(val.is_none());
