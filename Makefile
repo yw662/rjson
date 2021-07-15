@@ -5,7 +5,7 @@ build:
 	@cargo +nightly build --no-default-features
 
 run-tests:
-	@cargo +nightly test --features=integer
+	@cargo +nightly test --no-default-features --features=integer
 
 clippy:
-	@cargo +nightly clippy --features=integer
+	@cargo +nightly clippy --no-default-features --features=integer
