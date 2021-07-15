@@ -44,21 +44,11 @@ pub trait Value<A: Array<Self, O, N>, O: Object<Self, A, N>, N: Null<Self, A, O>
 {
 }
 
-pub enum Number {
+enum Number {
     U64(u64),
     I64(i64),
     F64(f64),
 }
-
-// impl From<Number> for Value {
-//     fn from(v: Number) -> Self {
-//         match v {
-//             Number::I64(n) => i64::from(n),
-//             Number::U64(n) => u64::from(n),
-//             Number::F64(n) => f64::from(n),
-//         }
-//     }
-// }
 
 fn is_space(c: char) -> bool {
     c.is_whitespace() || c == '\t' || c == '\n' || c == '\r'
@@ -363,15 +353,18 @@ fn parse_number(src: &[char], index: &mut usize) -> Option<Number> {
     }
 
     // Floating point number part
-    let mut v = v as f64;
+    let mut float_number = v as f64;
+    let mut is_float = false;
     if src[*index] == '.' {
+        is_float = true;
         *index += 1;
-        v += parse_number_decimal(src, index);
+        float_number += parse_number_decimal(src, index);
         if src.len() <= *index {
-            return Some(Number::F64(v * sign as f64));
+            return Some(Number::F64(float_number * sign as f64));
         }
     }
     if src[*index] == 'e' || src[*index] == 'E' {
+        is_float = true;
         *index += 1;
         if src.len() <= *index {
             return Option::None;
@@ -388,12 +381,18 @@ fn parse_number(src: &[char], index: &mut usize) -> Option<Number> {
 
         #[cfg(not(feature = "std"))]
         {
-            v *= unsafe { core::intrinsics::powif64(10.0, e as i32 * e_sign) };
+            float_number *= unsafe { core::intrinsics::powif64(10.0, e as i32 * e_sign) };
         }
         #[cfg(feature = "std")]
         {
-            v *= f64::powi(10.0, e as i32 * e_sign)
+            float_number *= f64::powi(10.0, e as i32 * e_sign)
         }
     }
-    Some(Number::F64(v * sign as f64))
+    if is_float {
+        Some(Number::F64(float_number * sign as f64))
+    } else if sign > 0 {
+        Some(Number::U64(v))
+    } else {
+        Some(Number::I64(v as i64 * sign))
+    }
 }
