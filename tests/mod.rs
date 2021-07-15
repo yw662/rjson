@@ -8,7 +8,8 @@ use std::collections::BTreeMap;
 use std::convert::From;
 use std::vec::Vec;
 
-enum JsonValue {
+#[derive(PartialEq)]
+pub enum JsonValue {
     Null,
     Number(f64),
     U64(u64),
@@ -104,6 +105,44 @@ impl std::fmt::Display for JsonValue {
     }
 }
 
+pub fn parse_json(data: &str) -> Option<JsonValue> {
+    let data_array: Vec<char> = data.chars().collect();
+    let mut index = 0;
+    rjson::parse::<JsonValue, JsonArray, JsonObject, JsonValue>(&*data_array, &mut index)
+}
+
+impl JsonValue {
+    pub fn f64(&self, key: &str) -> Option<f64> {
+        match self {
+            JsonValue::Object(o) => match o.get(key)? {
+                JsonValue::Number(n) => Some(*n),
+                _ => None,
+            },
+            _ => None,
+        }
+    }
+
+    pub fn u64(&self, key: &str) -> Option<u64> {
+        match self {
+            JsonValue::Object(o) => match o.get(key)? {
+                JsonValue::U64(n) => Some(*n),
+                _ => None,
+            },
+            _ => None,
+        }
+    }
+
+    pub fn i64(&self, key: &str) -> Option<i64> {
+        match self {
+            JsonValue::Object(o) => match o.get(key)? {
+                JsonValue::I64(n) => Some(*n),
+                _ => None,
+            },
+            _ => None,
+        }
+    }
+}
+
 #[test]
 fn test() {
     let data = include_str!("./test.json");
@@ -116,4 +155,100 @@ fn test() {
     // That means the parser has reached and the data is there.
     // We should test whether the data is good or not, but it is...boring.
     println!("{}", interpreted.unwrap()); // run with --nocapture to check result.
+}
+
+#[cfg(feature = "integer")]
+#[test]
+fn test_f64() {
+    let json_val = parse_json(r#"{"number": 1.23}"#).unwrap();
+    let val = json_val.f64("number").unwrap();
+    assert_eq!(val, 1.23);
+
+    let json_val = parse_json(r#"{"number": -1.23}"#).unwrap();
+    let val = json_val.f64("number").unwrap();
+    assert_eq!(val, -1.23);
+
+    let json_val = parse_json(r#"{"number": 123}"#).unwrap();
+    let val = json_val.f64("number");
+    assert!(val.is_none());
+
+    let json_val = parse_json(r#"{"number": -123}"#).unwrap();
+    let val = json_val.f64("number");
+    assert!(val.is_none());
+
+    let json_val = parse_json(r#"{"number": "123"}"#).unwrap();
+    let val = json_val.f64("number");
+    assert!(val.is_none());
+
+    let json_val = parse_json(r#"{"number": {}}"#).unwrap();
+    let val = json_val.f64("number");
+    assert!(val.is_none());
+
+    let json_val = parse_json(r#"{"number": []}"#).unwrap();
+    let val = json_val.f64("number");
+    assert!(val.is_none());
+}
+
+#[cfg(feature = "integer")]
+#[test]
+fn test_i64() {
+    let json_val = parse_json(r#"{"number": 123}"#).unwrap();
+    let val = json_val.i64("number");
+    assert!(val.is_none());
+
+    let json_val = parse_json(r#"{"number": -123}"#).unwrap();
+    let val = json_val.i64("number").unwrap();
+    assert_eq!(val, -123);
+
+    let json_val = parse_json(r#"{"number": 1.23}"#).unwrap();
+    let val = json_val.i64("number");
+    assert!(val.is_none());
+
+    let json_val = parse_json(r#"{"number": -1.23}"#).unwrap();
+    let val = json_val.i64("number");
+    assert!(val.is_none());
+
+    let json_val = parse_json(r#"{"number": "123"}"#).unwrap();
+    let val = json_val.i64("number");
+    assert!(val.is_none());
+
+    let json_val = parse_json(r#"{"number": {}}"#).unwrap();
+    let val = json_val.i64("number");
+    assert!(val.is_none());
+
+    let json_val = parse_json(r#"{"number": []}"#).unwrap();
+    let val = json_val.i64("number");
+    assert!(val.is_none());
+}
+
+#[cfg(feature = "integer")]
+#[test]
+fn test_u64() {
+    let json_val = parse_json(r#"{"number": 123}"#).unwrap();
+    let val = json_val.u64("number").unwrap();
+    assert_eq!(val, 123);
+
+    let json_val = parse_json(r#"{"number": -123}"#).unwrap();
+    let val = json_val.u64("number");
+    assert!(val.is_none());
+
+    let json_val = parse_json(r#"{"number": 1.23}"#).unwrap();
+    let val = json_val.u64("number");
+    assert!(val.is_none());
+
+    let json_val = parse_json(r#"{"number": -1.23}"#).unwrap();
+    let val = json_val.u64("number");
+    assert!(val.is_none());
+
+    let json_val = parse_json(r#"{"number": "123"}"#).unwrap();
+    let val = json_val.u64("number");
+    assert!(val.is_none());
+
+    let json_val = parse_json(r#"{"number": {}}"#).unwrap();
+    let val = json_val.u64("number");
+    assert!(val.is_none());
+
+    let json_val = parse_json(r#"{"number": []}"#).unwrap();
+    let val = json_val.u64("number");
+    assert!(val.is_none());
 }
