@@ -1,5 +1,4 @@
 #![cfg_attr(not(feature = "std"), no_std)]
-#![cfg_attr(not(feature = "std"), feature(core_intrinsics))]
 #[cfg(not(feature = "std"))]
 extern crate alloc;
 #[cfg(not(feature = "std"))]
@@ -307,7 +306,7 @@ fn parse_number_decimal(src: &[char], index: &mut usize) -> f64 {
     let v = parse_number_integer(src, index) as f64;
     #[cfg(not(feature = "std"))]
     {
-        v * unsafe { core::intrinsics::powif64(0.1, (*index - head) as i32) }
+        v * intrinsics::powif64(0.1, (*index - head) as i32)
     }
     #[cfg(feature = "std")]
     {
@@ -372,7 +371,7 @@ fn parse_number(src: &[char], index: &mut usize) -> Option<Number> {
 
         #[cfg(not(feature = "std"))]
         {
-            float_number *= unsafe { core::intrinsics::powif64(10.0, e as i32 * e_sign) };
+            float_number *= intrinsics::powif64(10.0, e as i32 * e_sign);
         }
         #[cfg(feature = "std")]
         {
@@ -385,5 +384,44 @@ fn parse_number(src: &[char], index: &mut usize) -> Option<Number> {
         Some(Number::U64(v))
     } else {
         Some(Number::I64(v as i64 * sign))
+    }
+}
+
+/// We need `f64::powi` when parsing floats, but that is only available in std.
+/// The reason for that is that it's implemented via `powif64`, *intrinsic*
+/// which might dispatch to a hyper-optimized implementation in `libm` for some
+/// particular CPU.
+///
+/// WASM doesn't have `libm` or magic opcodes, so it implements intrinsics via
+/// compiler-rt library. This module vendors in relevant parts of compiler-rt.
+/// See
+///
+///   * https://github.com/rust-lang/rfcs/issues/2505
+///   * https://github.com/rust-lang/compiler-builtins
+#[cfg(not(feature = "std"))]
+mod intrinsics {
+    /// Implementation from
+    ///   <https://github.com/rust-lang/compiler-builtins/blob/ea0cb5b589cc498d629c545e9bae600301ba6aed/src/float/pow.rs>
+    pub(super) fn powif64(a: f64, b: i32) -> f64 {
+        let mut a = a;
+        let recip = b < 0;
+        let mut pow = b.wrapping_abs() as u32;
+        let mut mul = 1.0;
+        loop {
+            if (pow & 1) != 0 {
+                mul *= a;
+            }
+            pow >>= 1;
+            if pow == 0 {
+                break;
+            }
+            a *= a;
+        }
+
+        if recip {
+            1.0 / mul
+        } else {
+            mul
+        }
     }
 }
