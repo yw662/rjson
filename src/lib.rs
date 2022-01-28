@@ -1,5 +1,4 @@
 #![cfg_attr(not(feature = "std"), no_std)]
-#![cfg_attr(not(feature = "std"), feature(core_intrinsics))]
 #[cfg(not(feature = "std"))]
 extern crate alloc;
 #[cfg(not(feature = "std"))]
@@ -32,9 +31,22 @@ where
     fn new() -> Self;
 }
 
+#[cfg(not(feature = "integer"))]
 pub trait Value<A: Array<Self, O, N>, O: Object<Self, A, N>, N: Null<Self, A, O>>:
     From<String> + From<f64> + From<bool> + From<A> + From<O> + From<N>
 {
+}
+
+#[cfg(feature = "integer")]
+pub trait Value<A: Array<Self, O, N>, O: Object<Self, A, N>, N: Null<Self, A, O>>:
+    From<String> + From<f64> + From<i64> + From<u64> + From<bool> + From<A> + From<O> + From<N>
+{
+}
+
+enum Number {
+    U64(u64),
+    I64(i64),
+    F64(f64),
 }
 
 fn is_space(c: char) -> bool {
@@ -51,19 +63,29 @@ pub fn parse<T: Value<A, O, N>, A: Array<T, O, N>, O: Object<T, A, N>, N: Null<T
         return Option::None;
     }
     if src[*index] == '{' {
-        parse_object::<T, A, O, N>(src, index).map(|v| T::from(v))
+        parse_object::<T, A, O, N>(src, index).map(T::from)
     } else if src[*index] == '[' {
-        parse_array::<T, A, O, N>(src, index).map(|v| T::from(v))
+        parse_array::<T, A, O, N>(src, index).map(T::from)
     } else if src[*index] == 't' {
-        parse_true(src, index).map(|v| T::from(v))
+        parse_true(src, index).map(T::from)
     } else if src[*index] == 'f' {
-        parse_false(src, index).map(|v| T::from(v))
+        parse_false(src, index).map(T::from)
     } else if src[*index] == '"' {
-        parse_string(src, index).map(|v| T::from(v))
+        parse_string(src, index).map(T::from)
     } else if src[*index] == 'n' {
-        parse_null::<T, A, O, N>(src, index).map(|v| T::from(v))
+        parse_null::<T, A, O, N>(src, index).map(T::from)
     } else if src[*index] == '-' || src[*index].is_ascii_digit() {
-        parse_number(src, index).map(|v| T::from(v))
+        parse_number(src, index).map(|v| match v {
+            #[cfg(feature = "integer")]
+            Number::I64(n) => T::from(n),
+            #[cfg(not(feature = "integer"))]
+            Number::I64(n) => T::from(n as f64),
+            #[cfg(feature = "integer")]
+            Number::U64(n) => T::from(n),
+            #[cfg(not(feature = "integer"))]
+            Number::U64(n) => T::from(n as f64),
+            Number::F64(n) => T::from(n),
+        })
     } else {
         Option::None
     }
@@ -90,9 +112,6 @@ fn parse_object<T: Value<A, O, N>, A: Array<T, O, N>, O: Object<T, A, N>, N: Nul
             return Some(v);
         }
         let k = parse_string(src, index);
-        if k.is_none() {
-            return Option::None;
-        }
         while src.len() > *index && is_space(src[*index]) {
             *index += 1;
         }
@@ -110,10 +129,7 @@ fn parse_object<T: Value<A, O, N>, A: Array<T, O, N>, O: Object<T, A, N>, N: Nul
             return Option::None;
         }
         let c = parse::<T, A, O, N>(src, index);
-        if c.is_none() {
-            return Option::None;
-        }
-        v.insert(k.unwrap(), c.unwrap());
+        v.insert(k?, c?);
         while src.len() > *index && is_space(src[*index]) {
             *index += 1;
         }
@@ -153,10 +169,7 @@ fn parse_array<T: Value<A, O, N>, A: Array<T, O, N>, O: Object<T, A, N>, N: Null
             return Some(v);
         }
         let i = parse::<T, A, O, N>(src, index);
-        if i.is_none() {
-            return Option::None;
-        }
-        v.push(i.unwrap());
+        v.push(i?);
         while src.len() > *index && is_space(src[*index]) {
             *index += 1;
         }
@@ -279,10 +292,10 @@ fn parse_string(src: &[char], index: &mut usize) -> Option<String> {
     Option::None
 }
 
-fn parse_number_integer(src: &[char], index: &mut usize) -> f64 {
-    let mut v: f64 = 0 as f64;
+fn parse_number_integer(src: &[char], index: &mut usize) -> u64 {
+    let mut v: u64 = 0;
     while src.len() > *index && src[*index].is_ascii_digit() {
-        v = v * 10.0 + src[*index].to_digit(10).unwrap() as f64;
+        v = v * 10 + src[*index].to_digit(10).unwrap() as u64;
         *index += 1;
     }
     v
@@ -290,10 +303,10 @@ fn parse_number_integer(src: &[char], index: &mut usize) -> f64 {
 
 fn parse_number_decimal(src: &[char], index: &mut usize) -> f64 {
     let head = *index;
-    let v = parse_number_integer(src, index);
+    let v = parse_number_integer(src, index) as f64;
     #[cfg(not(feature = "std"))]
     {
-        v * unsafe { core::intrinsics::powif64(0.1, (*index - head) as i32) }
+        v * intrinsics::powif64(0.1, (*index - head) as i32)
     }
     #[cfg(feature = "std")]
     {
@@ -301,8 +314,8 @@ fn parse_number_decimal(src: &[char], index: &mut usize) -> f64 {
     }
 }
 
-fn parse_number(src: &[char], index: &mut usize) -> Option<f64> {
-    let mut v: f64 = 0 as f64;
+fn parse_number(src: &[char], index: &mut usize) -> Option<Number> {
+    let mut v: u64 = 0;
     let mut sign = 1;
     if src.len() <= *index {
         return Option::None;
@@ -320,16 +333,28 @@ fn parse_number(src: &[char], index: &mut usize) -> Option<f64> {
         *index += 1;
     }
     if src.len() <= *index {
-        return Some(v * sign as f64);
+        return Some({
+            if sign > 0 {
+                Number::U64(v as u64)
+            } else {
+                Number::I64(sign * v as i64)
+            }
+        });
     }
+
+    // Floating point number part
+    let mut float_number = v as f64;
+    let mut is_float = false;
     if src[*index] == '.' {
+        is_float = true;
         *index += 1;
-        v += parse_number_decimal(src, index);
+        float_number += parse_number_decimal(src, index);
         if src.len() <= *index {
-            return Some(v * sign as f64);
+            return Some(Number::F64(float_number * sign as f64));
         }
     }
     if src[*index] == 'e' || src[*index] == 'E' {
+        is_float = true;
         *index += 1;
         if src.len() <= *index {
             return Option::None;
@@ -346,12 +371,57 @@ fn parse_number(src: &[char], index: &mut usize) -> Option<f64> {
 
         #[cfg(not(feature = "std"))]
         {
-            v *= unsafe { core::intrinsics::powif64(10.0, e as i32 * e_sign) };
+            float_number *= intrinsics::powif64(10.0, e as i32 * e_sign);
         }
         #[cfg(feature = "std")]
         {
-            v *= f64::powi(10.0, e as i32 * e_sign)
+            float_number *= f64::powi(10.0, e as i32 * e_sign)
         }
     }
-    Some(v * sign as f64)
+    if is_float {
+        Some(Number::F64(float_number * sign as f64))
+    } else if sign > 0 {
+        Some(Number::U64(v))
+    } else {
+        Some(Number::I64(v as i64 * sign))
+    }
+}
+
+/// We need `f64::powi` when parsing floats, but that is only available in std.
+/// The reason for that is that it's implemented via `powif64`, *intrinsic*
+/// which might dispatch to a hyper-optimized implementation in `libm` for some
+/// particular CPU.
+///
+/// WASM doesn't have `libm` or magic opcodes, so it implements intrinsics via
+/// compiler-rt library. This module vendors in relevant parts of compiler-rt.
+/// See
+///
+///   * https://github.com/rust-lang/rfcs/issues/2505
+///   * https://github.com/rust-lang/compiler-builtins
+#[cfg(not(feature = "std"))]
+mod intrinsics {
+    /// Implementation from
+    ///   <https://github.com/rust-lang/compiler-builtins/blob/ea0cb5b589cc498d629c545e9bae600301ba6aed/src/float/pow.rs>
+    pub(super) fn powif64(a: f64, b: i32) -> f64 {
+        let mut a = a;
+        let recip = b < 0;
+        let mut pow = b.wrapping_abs() as u32;
+        let mut mul = 1.0;
+        loop {
+            if (pow & 1) != 0 {
+                mul *= a;
+            }
+            pow >>= 1;
+            if pow == 0 {
+                break;
+            }
+            a *= a;
+        }
+
+        if recip {
+            1.0 / mul
+        } else {
+            mul
+        }
+    }
 }

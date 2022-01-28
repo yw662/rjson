@@ -21,6 +21,7 @@ null, false
 
 "true"
 :
-"false"
-
+"false",
+  "integer1": 10,
+  "integer2": -10
 }
